@@ -5,6 +5,11 @@
     <string name="hint_email">Email</string>
     <string name="hint_password">Password</string>
     <string name="sign_in">Sign In</string>
+    <string name="sign_out">Sign Out</string>
+    <string name="remember_me">Remember me</string>
+    <string name="login_error_empty_fields">Enter email and password</string>
+    <string name="login_error_invalid_email">Enter a valid email address</string>
+    <string name="login_error_short_password">Password must be at least 6 characters</string>
     <string name="notes_title">My Notes</string>
     <string name="new_note">New Note</string>
     <string name="save">Save</string>

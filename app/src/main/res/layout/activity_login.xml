@@ -71,6 +71,15 @@
         android:text="@string/sign_in"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/cbRememberMe" />
+
+    <com.google.android.material.checkbox.MaterialCheckBox
+        android:id="@+id/cbRememberMe"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="@string/remember_me"
+        app:layout_constraintStart_toStartOf="@id/passwordLayout"
         app:layout_constraintTop_toBottomOf="@id/passwordLayout" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

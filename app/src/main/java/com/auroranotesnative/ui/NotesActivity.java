@@ -1,6 +1,7 @@
 package com.auroranotesnative.ui;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.text.TextWatcher;
 
@@ -10,6 +11,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.auroranotesnative.data.NoteRepository;
+import com.auroranotesnative.R;
 import com.auroranotesnative.databinding.ActivityNotesBinding;
 import com.auroranotesnative.model.Note;
 
@@ -17,6 +19,8 @@ import java.util.List;
 
 public class NotesActivity extends AppCompatActivity {
     public static final String EXTRA_NOTE = "extra_note";
+    private static final String AUTH_PREFS = "auth_prefs";
+    private static final String KEY_IS_SIGNED_IN = "is_signed_in";
 
     private ActivityNotesBinding binding;
     private NotesAdapter adapter;
@@ -34,6 +38,14 @@ public class NotesActivity extends AppCompatActivity {
 
         binding = ActivityNotesBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
+        binding.toolbar.inflateMenu(R.menu.notes_menu);
+        binding.toolbar.setOnMenuItemClickListener(item -> {
+            if (item.getItemId() == R.id.action_sign_out) {
+                signOut();
+                return true;
+            }
+            return false;
+        });
 
         adapter = new NotesAdapter(this::openEdit);
         binding.recyclerNotes.setLayoutManager(new LinearLayoutManager(this));
@@ -87,5 +99,12 @@ public class NotesActivity extends AppCompatActivity {
     private boolean isAiPrompt(String prompt) {
         String normalized = prompt.toLowerCase();
         return normalized.startsWith("ai:") || normalized.startsWith("/ai");
+    }
+
+    private void signOut() {
+        SharedPreferences prefs = getSharedPreferences(AUTH_PREFS, MODE_PRIVATE);
+        prefs.edit().putBoolean(KEY_IS_SIGNED_IN, false).apply();
+        startActivity(new Intent(this, LoginActivity.class));
+        finish();
     }
 }
