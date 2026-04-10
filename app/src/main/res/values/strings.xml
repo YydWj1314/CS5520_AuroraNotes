@@ -31,4 +31,23 @@
     <string name="ai_chat_placeholder">Ask in natural language, e.g. “urgent tasks due today”</string>
     <string name="ai_chat_send">Search</string>
     <string name="ai_chat_empty">Ask a question to search your notes.</string>
+    <string name="weather_title">Weather</string>
+    <string name="weather_city_hint">City name</string>
+    <string name="weather_fetch">Get weather</string>
+    <string name="weather_empty">Enter a city and tap Get weather. Data from Open-Meteo (no API key).</string>
+    <string name="weather_error_empty_city">Enter a city name</string>
+    <string name="weather_error">Could not load weather.\n%1$s</string>
+    <string name="weather_error_toast">Weather request failed</string>
+    <string name="weather_result_template">%1$s\n\n%2$.1f °C — %3$s\nHumidity: %4$d%%\nWind: %5$.0f km/h\n\nLat %6$s, Lon %7$s</string>
+    <string name="translate_title">Translate</string>
+    <string name="translate_source_hint">Text to translate</string>
+    <string name="translate_from">From</string>
+    <string name="translate_to">To</string>
+    <string name="translate_action">Translate</string>
+    <string name="translate_result_label">Translation</string>
+    <string name="translate_result_placeholder">Translation appears here.</string>
+    <string name="translate_downloading">Downloading language model…</string>
+    <string name="translate_error_empty">Enter text to translate</string>
+    <string name="translate_error_same_lang">Choose two different languages</string>
+    <string name="translate_error_failed">Translation failed: %1$s</string>
 </resources>

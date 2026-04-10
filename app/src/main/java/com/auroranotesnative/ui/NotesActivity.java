@@ -40,8 +40,17 @@ public class NotesActivity extends AppCompatActivity {
         setContentView(binding.getRoot());
         binding.toolbar.inflateMenu(R.menu.notes_menu);
         binding.toolbar.setOnMenuItemClickListener(item -> {
-            if (item.getItemId() == R.id.action_sign_out) {
+            int id = item.getItemId();
+            if (id == R.id.action_sign_out) {
                 signOut();
+                return true;
+            }
+            if (id == R.id.action_weather) {
+                startActivity(new Intent(this, WeatherActivity.class));
+                return true;
+            }
+            if (id == R.id.action_translate) {
+                startActivity(new Intent(this, TranslateActivity.class));
                 return true;
             }
             return false;
