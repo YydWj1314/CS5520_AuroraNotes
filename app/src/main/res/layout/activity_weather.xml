@@ -48,6 +48,19 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/cityLayout" />
 
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnGeminiBrief"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginTop="8dp"
+        android:enabled="false"
+        android:text="@string/weather_gemini_brief"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/btnFetchWeather" />
+
     <ScrollView
         android:layout_width="0dp"
         android:layout_height="0dp"
@@ -56,7 +69,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/btnFetchWeather">
+        app:layout_constraintTop_toBottomOf="@id/btnGeminiBrief">
 
         <TextView
             android:id="@+id/tvWeatherResult"

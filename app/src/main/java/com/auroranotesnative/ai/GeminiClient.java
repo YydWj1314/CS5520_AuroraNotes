@@ -21,6 +21,13 @@ public final class GeminiClient {
     private static final String MODEL = "gemini-1.5-flash";
 
     public String generateText(String apiKey, String prompt) throws IOException {
+        return generateText(apiKey, prompt, 256);
+    }
+
+    /**
+     * @param maxOutputTokens cap for model output (use higher values for longer translations).
+     */
+    public String generateText(String apiKey, String prompt, int maxOutputTokens) throws IOException {
         if (apiKey == null || apiKey.trim().isEmpty()) {
             throw new IOException("Gemini API key is empty");
         }
@@ -45,7 +52,7 @@ public final class GeminiClient {
             body.put("contents", contents);
             JSONObject generationConfig = new JSONObject();
             generationConfig.put("temperature", 0.2);
-            generationConfig.put("maxOutputTokens", 256);
+            generationConfig.put("maxOutputTokens", Math.max(64, Math.min(maxOutputTokens, 2048)));
             body.put("generationConfig", generationConfig);
         } catch (JSONException e) {
             // Should never happen with static prompt structure.

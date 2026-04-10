@@ -7,6 +7,8 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.auroranotesnative.R;
+import com.auroranotesnative.ai.GeminiApiKeys;
+import com.auroranotesnative.ai.GeminiClient;
 import com.auroranotesnative.databinding.ActivityTranslateBinding;
 import com.google.mlkit.common.model.DownloadConditions;
 import com.google.mlkit.nl.translate.TranslateLanguage;
@@ -14,6 +16,7 @@ import com.google.mlkit.nl.translate.Translation;
 import com.google.mlkit.nl.translate.Translator;
 import com.google.mlkit.nl.translate.TranslatorOptions;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -61,10 +64,11 @@ public class TranslateActivity extends AppCompatActivity {
         binding.spinnerFrom.setSelection(0);
         binding.spinnerTo.setSelection(1);
 
-        binding.btnTranslate.setOnClickListener(v -> runTranslation(binding));
+        binding.btnTranslate.setOnClickListener(v -> runOnDeviceTranslation(binding));
+        binding.btnTranslateGemini.setOnClickListener(v -> runGeminiTranslation(binding));
     }
 
-    private void runTranslation(ActivityTranslateBinding binding) {
+    private void runOnDeviceTranslation(ActivityTranslateBinding binding) {
         CharSequence src = binding.etSource.getText();
         String text = src == null ? "" : src.toString().trim();
         if (text.isEmpty()) {
@@ -82,8 +86,7 @@ public class TranslateActivity extends AppCompatActivity {
             return;
         }
 
-        binding.btnTranslate.setEnabled(false);
-        binding.tvTranslated.setText(R.string.translate_downloading);
+        setTranslatingUi(binding, true, getString(R.string.translate_downloading));
 
         TranslatorOptions options = new TranslatorOptions.Builder()
                 .setSourceLanguage(sourceLang)
@@ -96,22 +99,87 @@ public class TranslateActivity extends AppCompatActivity {
                 .addOnSuccessListener(unused -> translator.translate(text)
                         .addOnSuccessListener(result -> {
                             binding.tvTranslated.setText(result);
-                            binding.btnTranslate.setEnabled(true);
+                            setTranslatingUi(binding, false, null);
                             translator.close();
                         })
                         .addOnFailureListener(failure -> {
-                            showFailure(binding, failure);
+                            showOnDeviceFailure(binding, failure);
                             translator.close();
                         }))
                 .addOnFailureListener(failure -> {
-                    showFailure(binding, failure);
+                    showOnDeviceFailure(binding, failure);
                     translator.close();
                 });
     }
 
-    private void showFailure(ActivityTranslateBinding binding, Exception e) {
-        binding.btnTranslate.setEnabled(true);
+    private void runGeminiTranslation(ActivityTranslateBinding binding) {
+        CharSequence src = binding.etSource.getText();
+        String text = src == null ? "" : src.toString().trim();
+        if (text.isEmpty()) {
+            Toast.makeText(this, R.string.translate_error_empty, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        int fromIdx = binding.spinnerFrom.getSelectedItemPosition();
+        int toIdx = binding.spinnerTo.getSelectedItemPosition();
+        if (LANGS[fromIdx].mlKitCode.equals(LANGS[toIdx].mlKitCode)) {
+            Toast.makeText(this, R.string.translate_error_same_lang, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (!GeminiApiKeys.isConfigured(this)) {
+            Toast.makeText(this, R.string.translate_gemini_need_key, Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        String fromLabel = LANGS[fromIdx].label;
+        String toLabel = LANGS[toIdx].label;
+        String apiKey = GeminiApiKeys.getKeyOrEmpty(this);
+        String prompt = buildGeminiTranslatePrompt(fromLabel, toLabel, text);
+
+        setTranslatingUi(binding, true, getString(R.string.translate_gemini_loading));
+        new Thread(() -> {
+            try {
+                GeminiClient client = new GeminiClient();
+                String out = client.generateText(apiKey, prompt, 768);
+                if (out == null) {
+                    out = "";
+                }
+                out = out.trim();
+                String finalOut = out;
+                runOnUiThread(() -> {
+                    binding.tvTranslated.setText(finalOut);
+                    setTranslatingUi(binding, false, null);
+                });
+            } catch (IOException e) {
+                String msg = e.getMessage() == null ? "" : e.getMessage();
+                runOnUiThread(() -> {
+                    binding.tvTranslated.setText(R.string.translate_result_placeholder);
+                    setTranslatingUi(binding, false, null);
+                    Toast.makeText(this, getString(R.string.translate_gemini_failed, msg), Toast.LENGTH_LONG).show();
+                });
+            }
+        }).start();
+    }
+
+    private static String buildGeminiTranslatePrompt(String fromLabel, String toLabel, String text) {
+        return "You are a professional translator. Translate the following text from "
+                + fromLabel + " to " + toLabel + ". Output only the translated text. "
+                + "Do not add quotes, labels, or explanations.\n\n" + text;
+    }
+
+    private void setTranslatingUi(ActivityTranslateBinding binding, boolean busy, String statusText) {
+        binding.btnTranslate.setEnabled(!busy);
+        binding.btnTranslateGemini.setEnabled(!busy);
+        if (busy && statusText != null) {
+            binding.tvTranslated.setText(statusText);
+        }
+    }
+
+    private void showOnDeviceFailure(ActivityTranslateBinding binding, Exception e) {
+        setTranslatingUi(binding, false, null);
         binding.tvTranslated.setText(R.string.translate_result_placeholder);
-        Toast.makeText(this, getString(R.string.translate_error_failed, e.getMessage()), Toast.LENGTH_LONG).show();
+        String msg = e.getMessage() == null ? "" : e.getMessage();
+        Toast.makeText(this, getString(R.string.translate_error_failed, msg), Toast.LENGTH_LONG).show();
     }
 }

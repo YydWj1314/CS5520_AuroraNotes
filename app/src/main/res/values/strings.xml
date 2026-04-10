@@ -39,6 +39,11 @@
     <string name="weather_error">Could not load weather.\n%1$s</string>
     <string name="weather_error_toast">Weather request failed</string>
     <string name="weather_result_template">%1$s\n\n%2$.1f °C — %3$s\nHumidity: %4$d%%\nWind: %5$.0f km/h\n\nLat %6$s, Lon %7$s</string>
+    <string name="weather_gemini_brief">Gemini tips (needs API key)</string>
+    <string name="weather_gemini_need_key">Add your Gemini API key in strings.xml to use this.</string>
+    <string name="weather_gemini_loading">Asking Gemini for a short briefing…</string>
+    <string name="weather_gemini_section">Gemini briefing</string>
+    <string name="weather_gemini_failed">Gemini briefing failed: %1$s</string>
     <string name="translate_title">Translate</string>
     <string name="translate_source_hint">Text to translate</string>
     <string name="translate_from">From</string>
@@ -50,4 +55,8 @@
     <string name="translate_error_empty">Enter text to translate</string>
     <string name="translate_error_same_lang">Choose two different languages</string>
     <string name="translate_error_failed">Translation failed: %1$s</string>
+    <string name="translate_with_gemini">Gemini</string>
+    <string name="translate_gemini_need_key">Add your Gemini API key in strings.xml for cloud translation.</string>
+    <string name="translate_gemini_loading">Translating with Gemini…</string>
+    <string name="translate_gemini_failed">Gemini translation failed: %1$s</string>
 </resources>

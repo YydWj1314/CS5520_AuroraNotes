@@ -84,16 +84,34 @@
         app:layout_constraintStart_toEndOf="@id/labelTo"
         app:layout_constraintTop_toTopOf="@id/labelTo" />
 
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/btnTranslate"
+    <LinearLayout
+        android:id="@+id/translateButtons"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginHorizontal="16dp"
         android:layout_marginTop="16dp"
-        android:text="@string/translate_action"
+        android:orientation="horizontal"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/spinnerTo" />
+        app:layout_constraintTop_toBottomOf="@id/spinnerTo">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnTranslate"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="6dp"
+            android:layout_weight="1"
+            android:text="@string/translate_action" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnTranslateGemini"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:layout_weight="1"
+            android:text="@string/translate_with_gemini" />
+    </LinearLayout>
 
     <TextView
         android:id="@+id/labelResult"
@@ -106,7 +124,7 @@
         android:textSize="13sp"
         android:textStyle="bold"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/btnTranslate" />
+        app:layout_constraintTop_toBottomOf="@id/translateButtons" />
 
     <ScrollView
         android:layout_width="0dp"
