@@ -1,29 +1,67 @@
 package com.auroranotesnative.model;
 
+import androidx.room.Entity;
+import androidx.room.PrimaryKey;
+
 import java.io.Serializable;
 
+@Entity(tableName = "notes")
 public class Note implements Serializable {
-    private final String id;
+
+    @PrimaryKey(autoGenerate = true)
+    private int id;   // ⭐ 改成 int + 自动生成
+
     private String title;
     private String content;
     private boolean pinned;
-    private String updatedAt;
+    private long updatedAt;
 
-    public Note(String id, String title, String content, boolean pinned, String updatedAt) {
-        this.id = id;
+    // 构造函数
+    public Note(String title, String content, boolean pinned, long updatedAt) {
         this.title = title;
         this.content = content;
         this.pinned = pinned;
         this.updatedAt = updatedAt;
     }
 
-    public String getId() { return id; }
-    public String getTitle() { return title; }
-    public void setTitle(String title) { this.title = title; }
-    public String getContent() { return content; }
-    public void setContent(String content) { this.content = content; }
-    public boolean isPinned() { return pinned; }
-    public void setPinned(boolean pinned) { this.pinned = pinned; }
-    public String getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(String updatedAt) { this.updatedAt = updatedAt; }
+    // getter / setter
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {   // ⭐ Room 需要 setter
+        this.id = id;
+    }
+
+    public String getTitle() {
+        return title == null ? "" : title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public String getContent() {
+        return content == null ? "" : content;
+    }
+
+    public void setContent(String content) {
+        this.content = content;
+    }
+
+    public boolean isPinned() {
+        return pinned;
+    }
+
+    public void setPinned(boolean pinned) {
+        this.pinned = pinned;
+    }
+
+    public long getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(long updatedAt) {
+        this.updatedAt = updatedAt;
+    }
 }
