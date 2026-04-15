@@ -11,8 +11,11 @@ import com.auroranotesnative.databinding.ItemNoteBinding;
 import com.auroranotesnative.ai.SummaryEngine;
 import com.auroranotesnative.model.Note;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 public class NotesAdapter extends RecyclerView.Adapter<NotesAdapter.NoteViewHolder> {
 
@@ -33,10 +36,19 @@ public class NotesAdapter extends RecyclerView.Adapter<NotesAdapter.NoteViewHold
         notifyDataSetChanged();
     }
 
+
+    public Note getNoteAt(int position) {
+        return notes.get(position);
+    }
+
     @NonNull
     @Override
     public NoteViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        ItemNoteBinding binding = ItemNoteBinding.inflate(LayoutInflater.from(parent.getContext()), parent, false);
+        ItemNoteBinding binding = ItemNoteBinding.inflate(
+                LayoutInflater.from(parent.getContext()),
+                parent,
+                false
+        );
         return new NoteViewHolder(binding);
     }
 
@@ -59,12 +71,26 @@ public class NotesAdapter extends RecyclerView.Adapter<NotesAdapter.NoteViewHold
         }
 
         void bind(Note note) {
-            binding.tvTitle.setText(note.getTitle().isEmpty() ? "Untitled" : note.getTitle());
+            // Title
+            binding.tvTitle.setText(
+                    note.getTitle().isEmpty() ? "Untitled" : note.getTitle()
+            );
+
+            // Content preview
             binding.tvContent.setText(note.getContent());
-            binding.tvUpdatedAt.setText("Updated " + note.getUpdatedAt());
+
+            // FIXED: Human-readable time
+            binding.tvUpdatedAt.setText(formatUpdatedAt(note.getUpdatedAt()));
+
+            // Pinned indicator
             binding.tvPinned.setVisibility(note.isPinned() ? View.VISIBLE : View.GONE);
 
-            String summary = SummaryEngine.summarize(note.getTitle(), note.getContent());
+            // Summary (AI)
+            String summary = SummaryEngine.summarize(
+                    note.getTitle(),
+                    note.getContent()
+            );
+
             if (summary == null || summary.isEmpty()) {
                 binding.tvSummary.setVisibility(View.GONE);
             } else {
@@ -72,7 +98,33 @@ public class NotesAdapter extends RecyclerView.Adapter<NotesAdapter.NoteViewHold
                 binding.tvSummary.setText(summary);
             }
 
+            // Click
             binding.getRoot().setOnClickListener(v -> listener.onNoteClick(note));
         }
     }
+
+    /**
+     * Format timestamp into human-friendly text
+     */
+    private String formatUpdatedAt(long updatedAt) {
+        long now = System.currentTimeMillis();
+        long diff = now - updatedAt;
+
+        long minutes = diff / (60 * 1000);
+        long hours = diff / (60 * 60 * 1000);
+        long days = diff / (24 * 60 * 60 * 1000);
+
+        if (minutes < 1) {
+            return "Updated just now";
+        } else if (minutes < 60) {
+            return "Updated " + minutes + " min ago";
+        } else if (hours < 24) {
+            return "Updated " + hours + " hours ago";
+        } else {
+            SimpleDateFormat sdf =
+                    new SimpleDateFormat("MMM d, yyyy", Locale.US);
+            return "Updated at" + sdf.format(new Date(updatedAt));
+        }
+    }
+
 }

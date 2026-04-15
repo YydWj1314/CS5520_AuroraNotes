@@ -17,14 +17,14 @@
     <string name="title">Title</string>
     <string name="content">Content</string>
     <string name="pin">Pin</string>
-    <string name="gemini_api_key">REPLACE_WITH_YOUR_GEMINI_API_KEY</string>
+    <string name="gemini_api_key">AIzaSyBn8cOUxrYA7mKg9xDhfQ2U0bW2BV-1kPM</string>
     <string name="ai_ranking_notes">Asking AI to rank your notes...</string>
     <string name="ai_missing_key">Please add your Gemini API key in strings.xml</string>
     <string name="ai_failed_fallback">AI request failed. Using local ranking instead.</string>
     <string name="ai_prompt_applied">AI ranking applied</string>
     <string name="ai_prompt_examples">Try: AI: order notes by importance</string>
-    <string name="search_notes">Semantic search or type AI: order notes</string>
-    <string name="ai_summary">AI Summary</string>
+    <string name="search_notes">Search in notes or tap AI chat</string>
+    <string name="ai_summary">Quick Summary</string>
     <string name="summary_placeholder">Type to generate a summary...</string>
     <string name="ai_chat">AI Search</string>
     <string name="ai_chat_title">AI Search</string>

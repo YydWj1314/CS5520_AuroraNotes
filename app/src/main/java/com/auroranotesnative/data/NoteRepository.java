@@ -1,76 +1,92 @@
 package com.auroranotesnative.data;
 
-import com.auroranotesnative.model.Note;
+import android.content.Context;
 
 import androidx.lifecycle.LiveData;
-import androidx.lifecycle.MutableLiveData;
 
-import java.text.SimpleDateFormat;
+import com.auroranotesnative.model.Note;
+
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 
+/**
+ * NoteRepository
+ *
+ * Responsibilities:
+ * 1. Handle Room database access
+ * 2. Provide basic + semantic search
+ * 3. Support AI features (catalog for Gemini)
+ */
 public class NoteRepository {
-    private static final List<Note> NOTES = new ArrayList<>();
-    private static final MutableLiveData<List<Note>> notesLiveData = new MutableLiveData<>();
 
+    /** Stopwords for filtering meaningless tokens */
     private static final Set<String> STOPWORDS = new HashSet<>();
 
     static {
-        // Small stopword list to keep the demo deterministic and lightweight.
         Collections.addAll(STOPWORDS,
-                "the", "a", "an", "and", "or", "but", "if", "then", "else",
-                "to", "of", "in", "on", "for", "with", "at", "by", "from",
-                "is", "are", "was", "were", "be", "been", "being", "it", "this", "that",
-                "as", "i", "you", "he", "she", "they", "we", "them", "us",
-                "your", "my", "our", "their", "not", "no", "yes", "do", "does", "did",
-                "can", "could", "would", "should", "will", "just"
+                "the","a","an","and","or","but","if","then","else",
+                "to","of","in","on","for","with","at","by","from",
+                "is","are","was","were","be","been","being","it","this","that",
+                "as","i","you","he","she","they","we","them","us",
+                "your","my","our","their","not","no","yes","do","does","did",
+                "can","could","would","should","will","just"
         );
     }
 
-    static {
-        NOTES.add(new Note(
-                UUID.randomUUID().toString(),
-                "Welcome to Aurora Notes",
-                "This is a fully native Java + XML Android Studio starter converted from the original React Native app concept.",
-                true,
-                now()
-        ));
-        NOTES.add(new Note(
-                UUID.randomUUID().toString(),
-                "AI Summary Ideas",
-                "You can extend this project with Supabase sync, AI summarization, weather, translation, and news modules.",
-                false,
-                now()
-        ));
-
-        notesLiveData.setValue(getAll());
+    /** Get DAO instance */
+    private static NoteDao dao(Context context) {
+        return AppDatabase.getInstance(context).noteDao();
     }
 
-    public static List<Note> getAll() {
-        List<Note> copy = new ArrayList<>(NOTES);
-        sort(copy);
-        return copy;
+    /** Get all notes */
+    public static List<Note> getAll(Context context) {
+        return dao(context).getAllNotes();
+    }
+
+    /** Observe notes in real-time */
+    public static LiveData<List<Note>> observeAll(Context context) {
+        return dao(context).observeAllNotes();
+    }
+
+    /** Save (insert or update) */
+    public static void save(Context context, Note note) {
+        note.setUpdatedAt(System.currentTimeMillis());
+
+        if (note.getId() == 0) {
+            long newId = dao(context).insert(note);
+            note.setId((int) newId);
+        } else {
+            dao(context).update(note);
+        }
+    }
+
+    /** Delete note */
+    public static void delete(Context context, Note note) {
+        dao(context).delete(note);
+    }
+
+    /** Create empty note */
+    public static Note createEmpty() {
+        return new Note("", "", false, System.currentTimeMillis());
     }
 
     /**
-     * Builds a compact catalog of notes for LLM prompting.
-     * This is a demo helper (in-memory data) and not intended for production scale.
+     * Build catalog string for LLM prompt
      */
-    public static String buildAiCatalog() {
+    public static String buildAiCatalog(Context context) {
+        List<Note> notes = getAll(context);
         StringBuilder builder = new StringBuilder();
-        for (Note note : NOTES) {
+
+        for (Note note : notes) {
             builder.append("- id: ").append(note.getId());
-            builder.append("\n  title: ").append(escapeForPrompt(note.getTitle()));
-            builder.append("\n  content: ").append(escapeForPrompt(note.getContent()));
+            builder.append("\n  title: ").append(safe(note.getTitle()));
+            builder.append("\n  content: ").append(safe(note.getContent()));
             builder.append("\n  pinned: ").append(note.isPinned());
             builder.append("\n  updatedAt: ").append(note.getUpdatedAt());
             builder.append("\n");
@@ -78,298 +94,264 @@ public class NoteRepository {
         return builder.toString();
     }
 
-    public static List<Note> search(String query) {
-        if (query == null || query.trim().isEmpty()) {
-            return getAll();
-        }
-        String normalized = query.trim().toLowerCase(Locale.ROOT);
+    /**
+     * Basic keyword search
+     */
+    public static List<Note> search(Context context, String query) {
+        List<Note> all = getAll(context);
+
+        if (query == null || query.trim().isEmpty()) return all;
+
+        String q = normalizeSynonyms(query).toLowerCase(Locale.ROOT).trim();
         List<Note> results = new ArrayList<>();
-        for (Note note : NOTES) {
-            if (safe(note.getTitle()).toLowerCase(Locale.ROOT).contains(normalized)
-                    || safe(note.getContent()).toLowerCase(Locale.ROOT).contains(normalized)) {
+
+        for (Note note : all) {
+            String title = normalizeSynonyms(safe(note.getTitle())).toLowerCase(Locale.ROOT);
+            String content = normalizeSynonyms(safe(note.getContent())).toLowerCase(Locale.ROOT);
+
+            if (title.contains(q) || content.contains(q)) {
                 results.add(note);
             }
         }
-        sort(results);
         return results;
     }
 
-    public static LiveData<List<Note>> observeAll() {
-        return notesLiveData;
+    /**
+     * Compatibility method:
+     * returns all scored notes sorted by semantic similarity
+     */
+    public static List<Note> searchSemantic(Context context, String query) {
+        return searchSemanticWithAdaptiveTopN(context, query).notes;
     }
 
     /**
-     * Lightweight "semantic" search based on TF-IDF cosine similarity.
-     * (No network calls, so it's runnable as a demo.)
+     * TF-IDF semantic search with adaptive topN
      */
-    public static List<Note> searchSemantic(String query) {
+    public static SemanticSearchResult searchSemanticWithAdaptiveTopN(Context context, String query) {
+        List<Note> allNotes = getAll(context);
+
         if (query == null || query.trim().isEmpty()) {
-            return getAll();
+            return new SemanticSearchResult(allNotes, Math.min(5, allNotes.size()));
         }
 
         List<String> queryTokens = tokenize(query);
         if (queryTokens.isEmpty()) {
-            return getAll();
+            return new SemanticSearchResult(allNotes, Math.min(5, allNotes.size()));
         }
 
         Map<String, Integer> tfQuery = termFrequency(queryTokens);
         Set<String> queryTokenSet = tfQuery.keySet();
 
-        // Document frequencies for query tokens only (faster).
-        int nDocs = NOTES.size();
+        int nDocs = allNotes.size();
         Map<String, Integer> df = new HashMap<>();
+
         for (String t : queryTokenSet) {
             df.put(t, 0);
         }
 
-        for (Note note : NOTES) {
-            Set<String> seenInDoc = new HashSet<>();
-            List<String> noteTokens = tokenize(note.getTitle() + " " + note.getContent());
-            for (String tok : noteTokens) {
+        // Compute document frequency
+        for (Note note : allNotes) {
+            Set<String> seen = new HashSet<>();
+            List<String> tokens = tokenize(note.getTitle() + " " + note.getContent());
+
+            for (String tok : tokens) {
                 if (queryTokenSet.contains(tok)) {
-                    seenInDoc.add(tok);
+                    seen.add(tok);
                 }
             }
-            for (String tok : seenInDoc) {
+
+            for (String tok : seen) {
                 df.put(tok, df.get(tok) + 1);
             }
         }
 
-        // Precompute query weights.
+        // Compute query vector
         Map<String, Double> wq = new HashMap<>();
         double normQ = 0.0;
-        for (Map.Entry<String, Integer> e : tfQuery.entrySet()) {
-            String tok = e.getKey();
-            int tf = e.getValue();
-            int docFreq = df.getOrDefault(tok, 0);
-            double idf = Math.log((nDocs + 1.0) / (docFreq + 1.0)) + 1.0;
-            double weight = tf * idf;
-            wq.put(tok, weight);
-            normQ += weight * weight;
+
+        for (String tok : tfQuery.keySet()) {
+            int tf = tfQuery.get(tok);
+            int d = df.getOrDefault(tok, 0);
+
+            double idf = Math.log((nDocs + 1.0) / (d + 1.0)) + 1.0;
+            double w = tf * idf;
+
+            wq.put(tok, w);
+            normQ += w * w;
         }
+
         normQ = Math.sqrt(normQ);
         if (normQ == 0.0) {
-            return getAll();
+            return new SemanticSearchResult(allNotes, Math.min(5, allNotes.size()));
         }
 
         List<ScoredNote> scored = new ArrayList<>();
-        for (Note note : NOTES) {
-            List<String> noteTokens = tokenize(note.getTitle() + " " + note.getContent());
-            Map<String, Integer> tfNote = new HashMap<>();
-            for (String tok : noteTokens) {
-                if (queryTokenSet.contains(tok)) {
-                    tfNote.put(tok, tfNote.getOrDefault(tok, 0) + 1);
-                }
-            }
+
+        // Compute cosine similarity
+        for (Note note : allNotes) {
+            List<String> tokens = tokenize(note.getTitle() + " " + note.getContent());
+            Map<String, Integer> tfNote = termFrequency(tokens);
 
             double dot = 0.0;
             double normD = 0.0;
+
             for (String tok : queryTokenSet) {
                 int tfN = tfNote.getOrDefault(tok, 0);
-                int docFreq = df.getOrDefault(tok, 0);
-                double idf = Math.log((nDocs + 1.0) / (docFreq + 1.0)) + 1.0;
-                double wN = tfN * idf;
+                int d = df.getOrDefault(tok, 0);
 
-                double wQTok = wq.getOrDefault(tok, 0.0);
-                dot += wN * wQTok;
+                double idf = Math.log((nDocs + 1.0) / (d + 1.0)) + 1.0;
+                double wN = tfN * idf;
+                double wQ = wq.get(tok);
+
+                dot += wN * wQ;
                 normD += wN * wN;
             }
-            normD = Math.sqrt(normD);
 
-            double score = (normD == 0.0) ? 0.0 : dot / (normQ * normD);
+            normD = Math.sqrt(normD);
+            double score = normD == 0.0 ? 0.0 : dot / (normQ * normD);
+
+            // Normalize note text into a few core concepts
+            String fullText = normalizeSynonyms(
+                    safe(note.getTitle()) + " " + safe(note.getContent())
+            ).toLowerCase(Locale.ROOT);
+
+            // Small pinned boost
             if (note.isPinned()) {
-                // Small UX boost so pinned notes remain easy to find.
                 score += 0.05;
             }
+
+            // Concept-level boost only
+            if (fullText.contains("urgent")) {
+                score += 0.08;
+            }
+            if (fullText.contains("task")) {
+                score += 0.04;
+            }
+            if (fullText.contains("today") || fullText.contains("tomorrow")) {
+                score += 0.04;
+            }
+
             scored.add(new ScoredNote(note, score));
         }
 
-        // Sort by semantic score, then pinned/updated time for stable UX.
-        Collections.sort(scored, (a, b) -> {
+        // Sort by score
+        scored.sort((a, b) -> {
             int cmp = Double.compare(b.score, a.score);
             if (cmp != 0) return cmp;
-            if (a.note.isPinned() != b.note.isPinned()) {
-                return a.note.isPinned() ? -1 : 1;
-            }
-            return b.note.getUpdatedAt().compareTo(a.note.getUpdatedAt());
+            return Long.compare(b.note.getUpdatedAt(), a.note.getUpdatedAt());
         });
 
         List<Note> results = new ArrayList<>();
-        for (ScoredNote sn : scored) {
-            results.add(sn.note);
+        for (ScoredNote s : scored) {
+            results.add(s.note);
         }
-        return results;
+
+        int adaptiveTopN = chooseAdaptiveTopN(scored);
+        return new SemanticSearchResult(results, adaptiveTopN);
     }
 
-    public static List<Note> applyAiPrompt(String prompt) {
-        String normalized = normalizePrompt(prompt);
-        if (normalized.isEmpty()) {
-            return getAll();
-        }
+    /**
+     * Decide how many results to return based on score distribution
+     */
+    private static int chooseAdaptiveTopN(List<ScoredNote> scored) {
+        if (scored == null || scored.isEmpty()) return 0;
 
-        List<Note> results = new ArrayList<>(NOTES);
+        double top = scored.get(0).score;
+        if (top <= 0.0) return 5;
 
-        if (containsAny(normalized, "priority", "importance", "important", "prioritize", "urgent")) {
-            Collections.sort(results, new Comparator<Note>() {
-                @Override
-                public int compare(Note a, Note b) {
-                    int scoreCompare = Integer.compare(priorityScore(b), priorityScore(a));
-                    if (scoreCompare != 0) {
-                        return scoreCompare;
-                    }
-                    return b.getUpdatedAt().compareTo(a.getUpdatedAt());
-                }
-            });
-            return results;
-        }
-
-        if (containsAny(normalized, "recent", "latest", "newest")) {
-            Collections.sort(results, new Comparator<Note>() {
-                @Override
-                public int compare(Note a, Note b) {
-                    return b.getUpdatedAt().compareTo(a.getUpdatedAt());
-                }
-            });
-            return results;
-        }
-
-        if (containsAny(normalized, "oldest", "earliest")) {
-            Collections.sort(results, new Comparator<Note>() {
-                @Override
-                public int compare(Note a, Note b) {
-                    return a.getUpdatedAt().compareTo(b.getUpdatedAt());
-                }
-            });
-            return results;
-        }
-
-        if (containsAny(normalized, "reverse alphabetical", "z-a", "reverse title")) {
-            Collections.sort(results, new Comparator<Note>() {
-                @Override
-                public int compare(Note a, Note b) {
-                    return b.getTitle().compareToIgnoreCase(a.getTitle());
-                }
-            });
-            return results;
-        }
-
-        if (containsAny(normalized, "alphabetical", "a-z", "title")) {
-            Collections.sort(results, new Comparator<Note>() {
-                @Override
-                public int compare(Note a, Note b) {
-                    return a.getTitle().compareToIgnoreCase(b.getTitle());
-                }
-            });
-            return results;
-        }
-
-        String fallbackQuery = removeAiPrefix(prompt);
-        return search(fallbackQuery);
-    }
-
-    public static void save(Note note) {
-        for (int i = 0; i < NOTES.size(); i++) {
-            if (NOTES.get(i).getId().equals(note.getId())) {
-                note.setUpdatedAt(now());
-                NOTES.set(i, note);
-                publish();
-                return;
+        int count = 0;
+        for (ScoredNote s : scored) {
+            if (s.score >= top * 0.45) {
+                count++;
+            } else {
+                break;
             }
         }
-        note.setUpdatedAt(now());
-        NOTES.add(note);
-        publish();
+
+        return Math.max(1, Math.min(count, 8));
     }
 
-    public static Note createEmpty() {
-        return new Note(UUID.randomUUID().toString(), "", "", false, now());
+    /**
+     * Normalize synonyms before tokenization
+     */
+    private static String normalizeSynonyms(String text) {
+        if (text == null) return "";
+
+        String normalized = text.toLowerCase(Locale.ROOT);
+
+        // ---- DAY ----
+        normalized = normalized.replace("tmr", "tomorrow");
+        normalized = normalized.replace("tmrw", "tomorrow");
+        normalized = normalized.replace("tommorrow", "tomorrow");
+
+        // tomorrow → day + week
+        normalized = normalized.replace("tomorrow", "tomorrow day week");
+        normalized = normalized.replace("today", "today day week");
+
+        // ---- WEEK ----
+        normalized = normalized.replace("this week", "week");
+        normalized = normalized.replace("next week", "week");
+        normalized = normalized.replace("weekend", "week");
+
+        // ---- MONTH ----
+        normalized = normalized.replace("this month", "month");
+        normalized = normalized.replace("next month", "month");
+
+        return normalized;
     }
 
-    private static int priorityScore(Note note) {
-        int score = note.isPinned() ? 100 : 0;
-        String text = (safe(note.getTitle()) + " " + safe(note.getContent())).toLowerCase(Locale.ROOT);
+    /**
+     * Simple token-form normalization
+     * Example: tasks -> task
+     */
+    private static String normalizeTokenForm(String token) {
+        if (token == null) return "";
 
-        score += keywordMatches(text,
-                "urgent", "asap", "important", "priority", "critical",
-                "deadline", "today", "tomorrow", "must", "action item",
-                "follow up", "blocker", "review");
-
-        if (text.contains("!!!")) {
-            score += 15;
+        if (token.endsWith("s") && token.length() > 3) {
+            return token.substring(0, token.length() - 1);
         }
-        if (text.contains("!!")) {
-            score += 10;
+
+        return token;
+    }
+
+    /** Tokenize text */
+    private static List<String> tokenize(String text) {
+        if (text == null) return Collections.emptyList();
+
+        String normalized = normalizeSynonyms(text)
+                .replaceAll("[^a-z0-9]+", " ");
+
+        String trimmed = normalized.trim();
+        if (trimmed.isEmpty()) return Collections.emptyList();
+
+        String[] parts = trimmed.split("\\s+");
+
+        List<String> tokens = new ArrayList<>(parts.length);
+        for (String p : parts) {
+            if (p.isEmpty()) continue;
+
+            p = normalizeTokenForm(p);
+
+            if (STOPWORDS.contains(p)) continue;
+            tokens.add(p);
         }
-        return score;
+        return tokens;
     }
 
-    private static int keywordMatches(String text, String... keywords) {
-        int score = 0;
-        for (String keyword : keywords) {
-            if (text.contains(keyword)) {
-                score += 10;
-            }
+    /** Term frequency */
+    private static Map<String, Integer> termFrequency(List<String> tokens) {
+        Map<String, Integer> tf = new HashMap<>();
+        for (String t : tokens) {
+            tf.put(t, tf.getOrDefault(t, 0) + 1);
         }
-        return score;
+        return tf;
     }
 
-    private static boolean containsAny(String text, String... options) {
-        for (String option : options) {
-            if (text.contains(option)) {
-                return true;
-            }
-        }
-        return false;
+    private static String safe(String s) {
+        return s == null ? "" : s;
     }
 
-    private static String normalizePrompt(String prompt) {
-        return removeAiPrefix(prompt).trim().toLowerCase(Locale.ROOT);
-    }
-
-    private static String removeAiPrefix(String prompt) {
-        if (prompt == null) {
-            return "";
-        }
-        String cleaned = prompt.trim();
-        if (cleaned.toLowerCase(Locale.ROOT).startsWith("ai:")) {
-            return cleaned.substring(3).trim();
-        }
-        if (cleaned.toLowerCase(Locale.ROOT).startsWith("/ai")) {
-            return cleaned.substring(3).trim();
-        }
-        return cleaned;
-    }
-
-    private static void sort(List<Note> notes) {
-        Collections.sort(notes, new Comparator<Note>() {
-            @Override
-            public int compare(Note a, Note b) {
-                if (a.isPinned() != b.isPinned()) {
-                    return a.isPinned() ? -1 : 1;
-                }
-                return b.getUpdatedAt().compareTo(a.getUpdatedAt());
-            }
-        });
-    }
-
-    private static String safe(String value) {
-        return value == null ? "" : value;
-    }
-
-    private static String escapeForPrompt(String value) {
-        String v = safe(value);
-        // Keep prompt readable; avoid huge multi-line blobs.
-        return v.replace("\r", " ").replace("\n", " ").trim();
-    }
-
-    private static String now() {
-        return new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US).format(new Date());
-    }
-
-    private static void publish() {
-        notesLiveData.setValue(getAll());
-    }
-
+    /** Internal scored wrapper */
     private static class ScoredNote {
         final Note note;
         final double score;
@@ -380,26 +362,14 @@ public class NoteRepository {
         }
     }
 
-    private static List<String> tokenize(String text) {
-        if (text == null) return Collections.emptyList();
-        String normalized = text.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", " ");
-        String[] parts = normalized.trim().split("\\s+");
-        List<String> tokens = new ArrayList<>(parts.length);
-        for (String p : parts) {
-            if (p.isEmpty()) continue;
-            if (STOPWORDS.contains(p)) continue;
-            tokens.add(p);
-        }
-        return tokens;
-    }
+    /** Result wrapper */
+    public static class SemanticSearchResult {
+        public final List<Note> notes;
+        public final int suggestedTopN;
 
-    private static Map<String, Integer> termFrequency(List<String> tokens) {
-        Map<String, Integer> tf = new HashMap<>();
-        for (String t : tokens) {
-            tf.put(t, tf.getOrDefault(t, 0) + 1);
+        public SemanticSearchResult(List<Note> notes, int suggestedTopN) {
+            this.notes = notes;
+            this.suggestedTopN = suggestedTopN;
         }
-        return tf;
     }
 }
-
-

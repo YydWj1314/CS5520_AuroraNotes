@@ -50,8 +50,8 @@ public class EditNoteActivity extends AppCompatActivity {
         binding.cbPinned.setChecked(note.isPinned());
 
         // If this note exists in the repository, treat it as persisted (autosave can update it).
-        for (Note existing : NoteRepository.getAll()) {
-            if (existing.getId().equals(note.getId())) {
+        for (Note existing : NoteRepository.getAll(this)) {
+            if (existing.getId() == note.getId()) {
                 persisted = true;
                 break;
             }
@@ -92,8 +92,14 @@ public class EditNoteActivity extends AppCompatActivity {
     }
 
     private void syncNoteFromUi() {
-        String title = binding.etTitle.getText() == null ? "" : binding.etTitle.getText().toString().trim();
-        String content = binding.etContent.getText() == null ? "" : binding.etContent.getText().toString().trim();
+        String title = binding.etTitle.getText() == null
+                ? ""
+                : binding.etTitle.getText().toString().trim();
+
+        String content = binding.etContent.getText() == null
+                ? ""
+                : binding.etContent.getText().toString().trim();
+
         note.setTitle(title);
         note.setContent(content);
     }
@@ -105,10 +111,14 @@ public class EditNoteActivity extends AppCompatActivity {
 
         pendingAutoSave = () -> {
             if (!shouldPersistNote()) return;
-            NoteRepository.save(note);
+
+            note.setUpdatedAt(System.currentTimeMillis());
+            NoteRepository.save(this, note);
+
             persisted = true;
             dirty = false;
         };
+
         handler.postDelayed(pendingAutoSave, AUTOSAVE_DEBOUNCE_MS);
     }
 
@@ -123,8 +133,10 @@ public class EditNoteActivity extends AppCompatActivity {
 
     private boolean shouldPersistNote() {
         if (persisted) return true;
+
         String title = note.getTitle() == null ? "" : note.getTitle().trim();
         String content = note.getContent() == null ? "" : note.getContent().trim();
+
         // For brand-new notes: avoid inserting an entirely empty record.
         return !TextUtils.isEmpty(title) || !TextUtils.isEmpty(content);
     }
@@ -139,8 +151,13 @@ public class EditNoteActivity extends AppCompatActivity {
     }
 
     private void saveNowAndFinish() {
-        String title = binding.etTitle.getText() == null ? "" : binding.etTitle.getText().toString().trim();
-        String content = binding.etContent.getText() == null ? "" : binding.etContent.getText().toString().trim();
+        String title = binding.etTitle.getText() == null
+                ? ""
+                : binding.etTitle.getText().toString().trim();
+
+        String content = binding.etContent.getText() == null
+                ? ""
+                : binding.etContent.getText().toString().trim();
 
         if (TextUtils.isEmpty(title) && TextUtils.isEmpty(content)) {
             Toast.makeText(this, "Please enter a title or note content", Toast.LENGTH_SHORT).show();
@@ -149,9 +166,11 @@ public class EditNoteActivity extends AppCompatActivity {
 
         note.setTitle(title);
         note.setContent(content);
-        note.setPinned(binding.cbPinned.isChecked()); // update pinned even if autosave didn't run
+        note.setPinned(binding.cbPinned.isChecked());
+        note.setUpdatedAt(System.currentTimeMillis());
 
-        NoteRepository.save(note); // persists + updates updatedAt
+        NoteRepository.save(this, note);
+
         persisted = true;
         dirty = false;
         setResult(Activity.RESULT_OK);
@@ -161,10 +180,14 @@ public class EditNoteActivity extends AppCompatActivity {
     @Override
     protected void onPause() {
         super.onPause();
-        if (pendingAutoSave != null) handler.removeCallbacks(pendingAutoSave);
+
+        if (pendingAutoSave != null) {
+            handler.removeCallbacks(pendingAutoSave);
+        }
 
         if (dirty && shouldPersistNote()) {
-            NoteRepository.save(note);
+            note.setUpdatedAt(System.currentTimeMillis());
+            NoteRepository.save(this, note);
             persisted = true;
             dirty = false;
         }

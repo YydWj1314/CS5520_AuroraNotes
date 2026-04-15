@@ -18,7 +18,7 @@ import java.nio.charset.StandardCharsets;
  * Uses local in-memory notes and returns model text.
  */
 public final class GeminiClient {
-    private static final String MODEL = "gemini-1.5-flash";
+    private static final String MODEL = "gemini-2.5-flash";
 
     public String generateText(String apiKey, String prompt) throws IOException {
         return generateText(apiKey, prompt, 256);

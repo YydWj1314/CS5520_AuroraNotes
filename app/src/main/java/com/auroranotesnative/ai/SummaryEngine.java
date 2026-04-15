@@ -66,7 +66,7 @@ public final class SummaryEngine {
         List<ScoredSentence> picked = scored.subList(0, topN);
         Collections.sort(picked, (a, b) -> Integer.compare(a.index, b.index));
 
-        int maxChars = 280;
+        int maxChars = 160;
         StringBuilder out = new StringBuilder();
         for (ScoredSentence ss : picked) {
             if (out.length() + ss.sentence.length() + 1 > maxChars) break;
