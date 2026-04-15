@@ -3,6 +3,8 @@ package com.auroranotesnative.ui;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.TextWatcher;
 
 import androidx.annotation.NonNull;
@@ -30,6 +32,9 @@ public class NotesActivity extends AppCompatActivity {
 
     private ActivityNotesBinding binding;
     private NotesAdapter adapter;
+    private final Handler searchHandler = new Handler(Looper.getMainLooper());
+    private Runnable pendingSearch;
+    private static final long SEARCH_DEBOUNCE_MS = 280;
 
     private String currentQuery = "";
 
@@ -92,7 +97,7 @@ public class NotesActivity extends AppCompatActivity {
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
                 currentQuery = s == null ? "" : s.toString();
-                renderList();
+                scheduleRenderList();
             }
 
             @Override
@@ -167,10 +172,26 @@ public class NotesActivity extends AppCompatActivity {
         adapter.submitList(items);
     }
 
+    private void scheduleRenderList() {
+        if (pendingSearch != null) {
+            searchHandler.removeCallbacks(pendingSearch);
+        }
+        pendingSearch = this::renderList;
+        searchHandler.postDelayed(pendingSearch, SEARCH_DEBOUNCE_MS);
+    }
+
     private void signOut() {
         SharedPreferences prefs = getSharedPreferences(AUTH_PREFS, MODE_PRIVATE);
         prefs.edit().putBoolean(KEY_IS_SIGNED_IN, false).apply();
         startActivity(new Intent(this, LoginActivity.class));
         finish();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (pendingSearch != null) {
+            searchHandler.removeCallbacks(pendingSearch);
+        }
     }
 }

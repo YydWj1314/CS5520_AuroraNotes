@@ -2,6 +2,19 @@ plugins {
     id 'com.android.application'
 }
 
+def localProps = new Properties()
+def localPropsFile = rootProject.file("local.properties")
+if (localPropsFile.exists()) {
+    localPropsFile.withInputStream { stream ->
+        localProps.load(stream)
+    }
+}
+
+def geminiApiKey = localProps.getProperty("gemini.api.key", "")
+if (!geminiApiKey?.trim()) {
+    geminiApiKey = System.getenv("GEMINI_API_KEY") ?: ""
+}
+
 android {
     namespace 'com.auroranotesnative'
     compileSdk 34
@@ -14,6 +27,7 @@ android {
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField "String", "GEMINI_API_KEY", "\"${geminiApiKey.replace("\\", "\\\\").replace("\"", "\\\"")}\""
     }
 
     buildTypes {
@@ -30,6 +44,7 @@ android {
 
     buildFeatures {
         viewBinding true
+        buildConfig true
     }
 }
 
@@ -43,7 +58,5 @@ dependencies {
     implementation 'com.google.mlkit:translate:17.0.3'
     implementation "androidx.room:room-runtime:2.6.1"
     annotationProcessor "androidx.room:room-compiler:2.6.1"
-    implementation "com.google.android.material:material:1.12.0"
     implementation "androidx.cardview:cardview:1.0.0"
-    implementation "androidx.constraintlayout:constraintlayout:2.1.4"
 }

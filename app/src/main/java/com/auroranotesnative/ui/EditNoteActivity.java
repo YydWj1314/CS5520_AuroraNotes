@@ -1,6 +1,7 @@
 package com.auroranotesnative.ui;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -25,12 +26,14 @@ public class EditNoteActivity extends AppCompatActivity {
 
     private static final long AUTOSAVE_DEBOUNCE_MS = 700;
     private static final long SUMMARY_DEBOUNCE_MS = 300;
+    private static final long LINKS_DEBOUNCE_MS = 350;
 
     private boolean persisted = false;
     private boolean dirty = false;
 
     private Runnable pendingAutoSave;
     private Runnable pendingSummary;
+    private Runnable pendingLinksRefresh;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -59,6 +62,7 @@ public class EditNoteActivity extends AppCompatActivity {
 
         wireListeners();
         updateSummaryText();
+        updateLinkPanels();
 
         binding.btnCancel.setOnClickListener(v -> finish());
         binding.btnSave.setOnClickListener(v -> saveNowAndFinish());
@@ -77,6 +81,7 @@ public class EditNoteActivity extends AppCompatActivity {
                 syncNoteFromUi();
                 dirty = true;
                 scheduleSummary();
+                scheduleLinksRefresh();
                 scheduleAutoSave();
             }
         };
@@ -131,6 +136,14 @@ public class EditNoteActivity extends AppCompatActivity {
         handler.postDelayed(pendingSummary, SUMMARY_DEBOUNCE_MS);
     }
 
+    private void scheduleLinksRefresh() {
+        if (pendingLinksRefresh != null) {
+            handler.removeCallbacks(pendingLinksRefresh);
+        }
+        pendingLinksRefresh = this::updateLinkPanels;
+        handler.postDelayed(pendingLinksRefresh, LINKS_DEBOUNCE_MS);
+    }
+
     private boolean shouldPersistNote() {
         if (persisted) return true;
 
@@ -148,6 +161,58 @@ public class EditNoteActivity extends AppCompatActivity {
             return;
         }
         binding.tvSummary.setText(summary);
+    }
+
+    private void updateLinkPanels() {
+        syncNoteFromUi();
+        renderNotesPanel(
+                binding.layoutLinkedNotes,
+                NoteRepository.getLinkedNotes(this, note),
+                getString(R.string.linked_notes_empty)
+        );
+        renderNotesPanel(
+                binding.layoutBacklinkedNotes,
+                NoteRepository.getBacklinkedNotes(this, note),
+                getString(R.string.backlinked_notes_empty)
+        );
+    }
+
+    private void renderNotesPanel(android.widget.LinearLayout container, java.util.List<Note> notes, String emptyText) {
+        container.removeAllViews();
+        if (notes == null || notes.isEmpty()) {
+            android.widget.TextView empty = new android.widget.TextView(this);
+            empty.setText(emptyText);
+            empty.setTextSize(12f);
+            empty.setTextColor(0xFF64748B);
+            container.addView(empty);
+            return;
+        }
+
+        for (Note linkedNote : notes) {
+            android.widget.TextView item = new android.widget.TextView(this);
+            String title = linkedNote.getTitle().trim().isEmpty()
+                    ? getString(R.string.untitled_note)
+                    : linkedNote.getTitle().trim();
+            item.setText("• " + title);
+            item.setTextSize(13f);
+            item.setTextColor(0xFF4F46E5);
+            item.setPadding(0, 6, 0, 6);
+            item.setOnClickListener(v -> openLinkedNote(linkedNote));
+            container.addView(item);
+        }
+    }
+
+    private void openLinkedNote(Note linkedNote) {
+        if (dirty && shouldPersistNote()) {
+            note.setUpdatedAt(System.currentTimeMillis());
+            NoteRepository.save(this, note);
+            persisted = true;
+            dirty = false;
+        }
+
+        Intent intent = new Intent(this, EditNoteActivity.class);
+        intent.putExtra(NotesActivity.EXTRA_NOTE, linkedNote);
+        startActivity(intent);
     }
 
     private void saveNowAndFinish() {
@@ -183,6 +248,9 @@ public class EditNoteActivity extends AppCompatActivity {
 
         if (pendingAutoSave != null) {
             handler.removeCallbacks(pendingAutoSave);
+        }
+        if (pendingLinksRefresh != null) {
+            handler.removeCallbacks(pendingLinksRefresh);
         }
 
         if (dirty && shouldPersistNote()) {

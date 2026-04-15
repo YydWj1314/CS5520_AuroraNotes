@@ -13,6 +13,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.Set;
 
 /**
@@ -24,6 +26,7 @@ import java.util.Set;
  * 3. Support AI features (catalog for Gemini)
  */
 public class NoteRepository {
+    private static final Pattern WIKI_LINK_PATTERN = Pattern.compile("\\[\\[([^\\]]+)]]");
 
     /** Stopwords for filtering meaningless tokens */
     private static final Set<String> STOPWORDS = new HashSet<>();
@@ -74,6 +77,61 @@ public class NoteRepository {
     /** Create empty note */
     public static Note createEmpty() {
         return new Note("", "", false, System.currentTimeMillis());
+    }
+
+    public static List<String> extractWikiLinkTitles(String content) {
+        List<String> titles = new ArrayList<>();
+        if (content == null || content.trim().isEmpty()) {
+            return titles;
+        }
+
+        Matcher matcher = WIKI_LINK_PATTERN.matcher(content);
+        Set<String> seen = new HashSet<>();
+        while (matcher.find()) {
+            String raw = matcher.group(1);
+            if (raw == null) continue;
+            String normalized = raw.trim();
+            if (normalized.isEmpty()) continue;
+            String key = normalized.toLowerCase(Locale.ROOT);
+            if (seen.add(key)) {
+                titles.add(normalized);
+            }
+        }
+        return titles;
+    }
+
+    public static List<Note> getLinkedNotes(Context context, Note sourceNote) {
+        List<Note> linked = new ArrayList<>();
+        if (sourceNote == null) return linked;
+
+        for (String title : extractWikiLinkTitles(sourceNote.getContent())) {
+            Note target = dao(context).getNoteByTitle(title);
+            if (target == null) continue;
+            if (sourceNote.getId() != 0 && sourceNote.getId() == target.getId()) continue;
+            linked.add(target);
+        }
+        return linked;
+    }
+
+    public static List<Note> getBacklinkedNotes(Context context, Note targetNote) {
+        List<Note> backlinks = new ArrayList<>();
+        if (targetNote == null) return backlinks;
+
+        String targetTitle = safe(targetNote.getTitle()).trim();
+        if (targetTitle.isEmpty()) return backlinks;
+        String normalizedTarget = targetTitle.toLowerCase(Locale.ROOT);
+
+        for (Note note : getAll(context)) {
+            if (targetNote.getId() != 0 && note.getId() == targetNote.getId()) continue;
+            List<String> links = extractWikiLinkTitles(note.getContent());
+            for (String linkedTitle : links) {
+                if (normalizedTarget.equals(linkedTitle.toLowerCase(Locale.ROOT))) {
+                    backlinks.add(note);
+                    break;
+                }
+            }
+        }
+        return backlinks;
     }
 
     /**

@@ -9,14 +9,14 @@ import java.io.Serializable;
 public class Note implements Serializable {
 
     @PrimaryKey(autoGenerate = true)
-    private int id;   // ⭐ 改成 int + 自动生成
+    private int id;   // int with auto-generation
 
     private String title;
     private String content;
     private boolean pinned;
     private long updatedAt;
 
-    // 构造函数
+    // Constructor
     public Note(String title, String content, boolean pinned, long updatedAt) {
         this.title = title;
         this.content = content;
@@ -29,7 +29,7 @@ public class Note implements Serializable {
         return id;
     }
 
-    public void setId(int id) {   // ⭐ Room 需要 setter
+    public void setId(int id) {   // Room requires a setter
         this.id = id;
     }
 

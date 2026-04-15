@@ -23,6 +23,9 @@ public interface NoteDao {
     @Query("SELECT * FROM notes WHERE id = :id LIMIT 1")
     Note getNoteById(int id);
 
+    @Query("SELECT * FROM notes WHERE lower(title) = lower(:title) LIMIT 1")
+    Note getNoteByTitle(String title);
+
     @Insert
     long insert(Note note);
 

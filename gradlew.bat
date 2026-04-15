@@ -2,7 +2,7 @@
 setlocal
 
 set APP_HOME=%~dp0
-set CLASSPATH=%APP_HOME%gradle\wrapper\gradle-wrapper.jar;%APP_HOME%gradle\wrapper\gradle-wrapper-shared.jar
+set CLASSPATH=%APP_HOME%gradle\wrapper\gradle-wrapper.jar
 
 if not exist "%CLASSPATH%" (
   echo Missing Gradle wrapper jar: %CLASSPATH%

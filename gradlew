@@ -18,10 +18,11 @@ done
 
 APP_HOME=$(cd "$(dirname "$PRG")" && pwd -P)
 
-CLASSPATH="$APP_HOME/gradle/wrapper/gradle-wrapper.jar:$APP_HOME/gradle/wrapper/gradle-wrapper-shared.jar"
+WRAPPER_JAR="$APP_HOME/gradle/wrapper/gradle-wrapper.jar"
+CLASSPATH="$WRAPPER_JAR"
 
-if [ ! -f "$CLASSPATH" ]; then
-  echo "Missing Gradle wrapper jar: $CLASSPATH" 1>&2
+if [ ! -f "$WRAPPER_JAR" ]; then
+  echo "Missing Gradle wrapper jar: $WRAPPER_JAR" 1>&2
   exit 1
 fi
 

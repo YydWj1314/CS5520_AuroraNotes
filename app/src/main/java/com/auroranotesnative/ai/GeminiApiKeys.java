@@ -1,6 +1,6 @@
 package com.auroranotesnative.ai;
 
-import com.auroranotesnative.R;
+import com.auroranotesnative.BuildConfig;
 
 import android.content.Context;
 
@@ -13,7 +13,7 @@ public final class GeminiApiKeys {
     }
 
     public static boolean isConfigured(Context context) {
-        String key = context.getString(R.string.gemini_api_key);
+        String key = BuildConfig.GEMINI_API_KEY;
         if (key == null || key.trim().isEmpty()) {
             return false;
         }
@@ -21,6 +21,7 @@ public final class GeminiApiKeys {
     }
 
     public static String getKeyOrEmpty(Context context) {
-        return context.getString(R.string.gemini_api_key).trim();
+        String key = BuildConfig.GEMINI_API_KEY;
+        return key == null ? "" : key.trim();
     }
 }

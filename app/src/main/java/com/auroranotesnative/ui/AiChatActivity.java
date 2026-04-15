@@ -14,6 +14,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
 
 import com.auroranotesnative.R;
+import com.auroranotesnative.ai.GeminiApiKeys;
 import com.auroranotesnative.ai.GeminiClient;
 import com.auroranotesnative.ai.SemanticSearchPromptService;
 import com.auroranotesnative.ai.SummaryEngine;
@@ -64,26 +65,22 @@ public class AiChatActivity extends AppCompatActivity {
         addUserMessage(prompt);
 
         new Thread(() -> {
-            String apiKey = getString(R.string.gemini_api_key);
+            String apiKey = GeminiApiKeys.getKeyOrEmpty(this);
             List<Note> results = new ArrayList<>();
             String finalQuery = "";
-
-            Log.d(TAG, "User prompt = " + prompt);
-            Log.d(TAG, "apiKey is null? " + (apiKey == null));
-            Log.d(TAG, "apiKey is empty? " + (apiKey != null && apiKey.trim().isEmpty()));
-            Log.d(TAG, "apiKey is placeholder? "
-                    + (apiKey != null && apiKey.contains("REPLACE_WITH_YOUR_GEMINI_API_KEY")));
+            boolean geminiEnabled = GeminiApiKeys.isConfigured(this);
 
             try {
-                Log.d(TAG, "Calling interpretPromptToSearch...");
-                SemanticSearchPromptService.Result interpreted =
-                        promptService.interpretPromptToSearch(apiKey, prompt);
+                SemanticSearchPromptService.Result interpreted;
+                if (geminiEnabled) {
+                    interpreted = promptService.interpretPromptToSearch(apiKey, prompt);
+                } else {
+                    interpreted = new SemanticSearchPromptService.Result(prompt, 5);
+                }
 
                 finalQuery = interpreted.searchQuery == null
                         ? ""
                         : interpreted.searchQuery.trim();
-
-                Log.d(TAG, "Interpreted search query = " + finalQuery);
 
                 NoteRepository.SemanticSearchResult semanticResult =
                         NoteRepository.searchSemanticWithAdaptiveTopN(
@@ -94,13 +91,9 @@ public class AiChatActivity extends AppCompatActivity {
                 results = semanticResult.notes;
 
                 int adaptiveTopN = semanticResult.suggestedTopN;
-                Log.d(TAG, "Adaptive topN = " + adaptiveTopN);
-
                 if (adaptiveTopN > 0 && results.size() > adaptiveTopN) {
                     results = results.subList(0, adaptiveTopN);
                 }
-
-                Log.d(TAG, "Local semantic search result count = " + results.size());
 
             } catch (IOException e) {
                 Log.e(TAG, "Gemini failed, falling back to raw prompt search", e);
@@ -116,20 +109,19 @@ public class AiChatActivity extends AppCompatActivity {
                 results = semanticResult.notes;
 
                 int adaptiveTopN = semanticResult.suggestedTopN;
-                Log.d(TAG, "Fallback adaptive topN = " + adaptiveTopN);
-
                 if (adaptiveTopN > 0 && results.size() > adaptiveTopN) {
                     results = results.subList(0, adaptiveTopN);
                 }
-
-                Log.d(TAG, "Fallback search query = " + finalQuery);
-                Log.d(TAG, "Fallback result count = " + results.size());
             }
 
             final String queryToShow = finalQuery;
             final List<Note> finalResults = results;
+            final boolean isGeminiEnabled = geminiEnabled;
 
             runOnUiThread(() -> {
+                if (!isGeminiEnabled) {
+                    addAiMessage(getString(R.string.ai_missing_key));
+                }
                 addAiMessage("Searching for: "
                         + (TextUtils.isEmpty(queryToShow) ? prompt : queryToShow));
 
