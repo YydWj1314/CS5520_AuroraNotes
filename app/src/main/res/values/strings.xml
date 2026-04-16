@@ -64,4 +64,19 @@
     <string name="linked_notes_empty">No linked notes yet. Try writing [[Note Title]] in content.</string>
     <string name="backlinked_notes_empty">No notes reference this note yet.</string>
     <string name="untitled_note">Untitled</string>
+    <string name="notes_empty_title">No notes yet</string>
+    <string name="notes_empty_subtitle">Tap + to create one</string>
+    <string name="notes_empty_search_title">No matching notes</string>
+    <string name="notes_empty_search_subtitle">Try a different search</string>
+    <string name="notes_empty_pinned_title">No pinned notes</string>
+    <string name="notes_empty_pinned_subtitle">Open a note and enable Pin to show it here</string>
+    <string name="note_count_all">%1$d notes</string>
+    <string name="note_count_search_with_total">%1$d results · %2$d notes</string>
+    <string name="sort_notes_menu">Sort &amp; filter</string>
+    <string name="sort_newest">Newest first</string>
+    <string name="sort_oldest">Oldest first</string>
+    <string name="sort_alpha">Alphabetical (A–Z)</string>
+    <string name="sort_pinned_only">Pinned only</string>
+    <string name="note_color_label">Color tag</string>
+    <string name="note_word_char_count">%1$d words · %2$d characters</string>
 </resources>

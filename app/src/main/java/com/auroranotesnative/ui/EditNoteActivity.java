@@ -6,8 +6,12 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.Editable;
+import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
+import android.view.View;
+import android.widget.LinearLayout;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -17,6 +21,7 @@ import com.auroranotesnative.ai.SummaryEngine;
 import com.auroranotesnative.data.NoteRepository;
 import com.auroranotesnative.databinding.ActivityEditNoteBinding;
 import com.auroranotesnative.model.Note;
+import com.auroranotesnative.model.NoteAccentPalette;
 
 public class EditNoteActivity extends AppCompatActivity {
     private ActivityEditNoteBinding binding;
@@ -61,6 +66,8 @@ public class EditNoteActivity extends AppCompatActivity {
         }
 
         wireListeners();
+        setupColorChips();
+        updateWordCharCount();
         updateSummaryText();
         updateLinkPanels();
 
@@ -80,6 +87,7 @@ public class EditNoteActivity extends AppCompatActivity {
             public void afterTextChanged(Editable s) {
                 syncNoteFromUi();
                 dirty = true;
+                updateWordCharCount();
                 scheduleSummary();
                 scheduleLinksRefresh();
                 scheduleAutoSave();
@@ -107,6 +115,90 @@ public class EditNoteActivity extends AppCompatActivity {
 
         note.setTitle(title);
         note.setContent(content);
+    }
+
+    private void updateWordCharCount() {
+        String title = binding.etTitle.getText() == null ? "" : binding.etTitle.getText().toString();
+        String content = binding.etContent.getText() == null ? "" : binding.etContent.getText().toString();
+        String combined = title + content;
+        int chars = combined.length();
+        int words = countWords(combined);
+        binding.tvWordCharCount.setText(getString(R.string.note_word_char_count, words, chars));
+    }
+
+    private static int countWords(String s) {
+        if (s == null) {
+            return 0;
+        }
+        String t = s.trim();
+        if (t.isEmpty()) {
+            return 0;
+        }
+        return t.split("\\s+").length;
+    }
+
+    private void setupColorChips() {
+        LinearLayout row = binding.layoutColorChips;
+        row.removeAllViews();
+        float density = getResources().getDisplayMetrics().density;
+        int marginPx = Math.round(6 * density);
+        int sizePx = Math.round(28 * density);
+
+        addColorChip(row, 0, sizePx, marginPx, density);
+        for (int c : NoteAccentPalette.CHOICES) {
+            addColorChip(row, c, sizePx, marginPx, density);
+        }
+    }
+
+    private void addColorChip(LinearLayout row, int color, int sizePx, int marginPx, float density) {
+        View chip = new View(this);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(sizePx, sizePx);
+        lp.setMargins(marginPx, 0, marginPx, 0);
+        chip.setLayoutParams(lp);
+        chip.setTag(color);
+        styleColorChip(chip, color, note.getColorTag() == color, density);
+        chip.setOnClickListener(v -> {
+            note.setColorTag(color);
+            dirty = true;
+            refreshColorChipStyles(row, density);
+            scheduleAutoSave();
+        });
+        row.addView(chip);
+    }
+
+    private void refreshColorChipStyles(LinearLayout row, float density) {
+        int selected = note.getColorTag();
+        for (int i = 0; i < row.getChildCount(); i++) {
+            View chip = row.getChildAt(i);
+            Object tag = chip.getTag();
+            if (!(tag instanceof Integer)) {
+                continue;
+            }
+            int color = (Integer) tag;
+            styleColorChip(chip, color, color == selected, density);
+        }
+    }
+
+    private static void styleColorChip(View chip, int color, boolean selected, float density) {
+        int strokePx = Math.max(1, Math.round(density * 3));
+        GradientDrawable gd = new GradientDrawable();
+        gd.setShape(GradientDrawable.OVAL);
+        if (color == 0) {
+            gd.setColor(0xFFE2E8F0);
+            if (selected) {
+                gd.setStroke(strokePx, 0xFF6366F1);
+            } else {
+                gd.setStroke(Math.max(1, Math.round(density)), 0xFFCBD5E1);
+            }
+        } else {
+            gd.setColor(color);
+            if (selected) {
+                gd.setStroke(Math.max(2, Math.round(density * 3)), Color.WHITE);
+            } else {
+                gd.setStroke(0, Color.TRANSPARENT);
+            }
+        }
+        chip.setBackground(gd);
     }
 
     private void scheduleAutoSave() {
@@ -150,8 +242,8 @@ public class EditNoteActivity extends AppCompatActivity {
         String title = note.getTitle() == null ? "" : note.getTitle().trim();
         String content = note.getContent() == null ? "" : note.getContent().trim();
 
-        // For brand-new notes: avoid inserting an entirely empty record.
-        return !TextUtils.isEmpty(title) || !TextUtils.isEmpty(content);
+        // For brand-new notes: avoid inserting an entirely empty record (unless tagged).
+        return !TextUtils.isEmpty(title) || !TextUtils.isEmpty(content) || note.getColorTag() != 0;
     }
 
     private void updateSummaryText() {

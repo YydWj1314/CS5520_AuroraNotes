@@ -1,5 +1,6 @@
 package com.auroranotesnative.model;
 
+import androidx.room.ColumnInfo;
 import androidx.room.Entity;
 import androidx.room.PrimaryKey;
 
@@ -16,12 +17,17 @@ public class Note implements Serializable {
     private boolean pinned;
     private long updatedAt;
 
+    /** Accent color as ARGB; 0 means no tag. */
+    @ColumnInfo(defaultValue = "0")
+    private int colorTag;
+
     // Constructor
-    public Note(String title, String content, boolean pinned, long updatedAt) {
+    public Note(String title, String content, boolean pinned, long updatedAt, int colorTag) {
         this.title = title;
         this.content = content;
         this.pinned = pinned;
         this.updatedAt = updatedAt;
+        this.colorTag = colorTag;
     }
 
     // getter / setter
@@ -63,5 +69,13 @@ public class Note implements Serializable {
 
     public void setUpdatedAt(long updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public int getColorTag() {
+        return colorTag;
+    }
+
+    public void setColorTag(int colorTag) {
+        this.colorTag = colorTag;
     }
 }
