@@ -76,7 +76,7 @@ public class NoteRepository {
 
     /** Create empty note */
     public static Note createEmpty() {
-        return new Note("", "", false, System.currentTimeMillis());
+        return new Note("", "", false, System.currentTimeMillis(), 0);
     }
 
     public static List<String> extractWikiLinkTitles(String content) {

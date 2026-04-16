@@ -2,6 +2,30 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
 
     <item
+        android:id="@+id/menu_sort_anchor"
+        android:title="@string/sort_notes_menu"
+        android:showAsAction="never">
+        <menu>
+            <group
+                android:id="@+id/group_sort"
+                android:checkableBehavior="single">
+                <item
+                    android:id="@+id/sort_newest"
+                    android:title="@string/sort_newest"
+                    android:checked="true" />
+                <item
+                    android:id="@+id/sort_oldest"
+                    android:title="@string/sort_oldest" />
+                <item
+                    android:id="@+id/sort_alpha"
+                    android:title="@string/sort_alpha" />
+                <item
+                    android:id="@+id/sort_pinned_only"
+                    android:title="@string/sort_pinned_only" />
+            </group>
+        </menu>
+    </item>
+    <item
         android:id="@+id/action_weather"
         android:title="@string/weather_title"
         android:showAsAction="never" />

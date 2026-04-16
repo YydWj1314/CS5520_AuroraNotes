@@ -85,6 +85,14 @@ public class NotesAdapter extends RecyclerView.Adapter<NotesAdapter.NoteViewHold
             // Pinned indicator
             binding.tvPinned.setVisibility(note.isPinned() ? View.VISIBLE : View.GONE);
 
+            int tagColor = note.getColorTag();
+            if (tagColor == 0) {
+                binding.colorBar.setVisibility(View.GONE);
+            } else {
+                binding.colorBar.setVisibility(View.VISIBLE);
+                binding.colorBar.setBackgroundColor(tagColor);
+            }
+
             // Summary (AI)
             String summary = SummaryEngine.summarize(
                     note.getTitle(),
@@ -123,7 +131,7 @@ public class NotesAdapter extends RecyclerView.Adapter<NotesAdapter.NoteViewHold
         } else {
             SimpleDateFormat sdf =
                     new SimpleDateFormat("MMM d, yyyy", Locale.US);
-            return "Updated at" + sdf.format(new Date(updatedAt));
+            return "Updated at " + sdf.format(new Date(updatedAt));
         }
     }
 
