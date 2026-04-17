@@ -34,6 +34,10 @@
         android:title="@string/translate_title"
         android:showAsAction="never" />
     <item
+        android:id="@+id/action_review"
+        android:title="@string/review_title"
+        android:showAsAction="never" />
+    <item
         android:id="@+id/action_sign_out"
         android:title="@string/sign_out"
         android:showAsAction="always" />

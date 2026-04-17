@@ -121,10 +121,16 @@ public final class GeminiClient {
             JSONArray parts = content.optJSONArray("parts");
             if (parts == null || parts.length() == 0) return "";
 
-            JSONObject part0 = parts.optJSONObject(0);
-            if (part0 == null) return "";
-
-            return part0.optString("text", "");
+            StringBuilder merged = new StringBuilder();
+            for (int i = 0; i < parts.length(); i++) {
+                JSONObject p = parts.optJSONObject(i);
+                if (p == null) continue;
+                String t = p.optString("text", "");
+                if (t.isEmpty()) continue;
+                if (merged.length() > 0) merged.append('\n');
+                merged.append(t);
+            }
+            return merged.toString();
         } catch (JSONException e) {
             throw new IOException("Failed to parse Gemini response JSON", e);
         }

@@ -13,9 +13,10 @@ import com.auroranotesnative.R;
 import com.auroranotesnative.databinding.ActivityLoginBinding;
 
 public class LoginActivity extends AppCompatActivity {
-    private static final String AUTH_PREFS = "auth_prefs";
-    private static final String KEY_IS_SIGNED_IN = "is_signed_in";
-    private static final String KEY_EMAIL = "email";
+    private static final String AUTH_PREFS = RegisterActivity.AUTH_PREFS;
+    private static final String KEY_IS_SIGNED_IN = RegisterActivity.KEY_IS_SIGNED_IN;
+    private static final String KEY_EMAIL = RegisterActivity.KEY_EMAIL;
+    private static final String KEY_PASSWORD = RegisterActivity.KEY_PASSWORD;
     private static final int MIN_PASSWORD_LENGTH = 6;
 
     private ActivityLoginBinding binding;
@@ -34,6 +35,7 @@ public class LoginActivity extends AppCompatActivity {
 
         String savedEmail = prefs.getString(KEY_EMAIL, "");
         binding.etEmail.setText(savedEmail);
+        binding.btnGoRegister.setOnClickListener(v -> startActivity(new Intent(this, RegisterActivity.class)));
 
         binding.btnSignIn.setOnClickListener(v -> {
             String email = binding.etEmail.getText() == null ? "" : binding.etEmail.getText().toString().trim();
@@ -51,6 +53,17 @@ public class LoginActivity extends AppCompatActivity {
 
             if (password.length() < MIN_PASSWORD_LENGTH) {
                 Toast.makeText(this, getString(R.string.login_error_short_password), Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            String registeredEmail = prefs.getString(KEY_EMAIL, "");
+            String registeredPassword = prefs.getString(KEY_PASSWORD, "");
+            if (TextUtils.isEmpty(registeredEmail) || TextUtils.isEmpty(registeredPassword)) {
+                Toast.makeText(this, R.string.login_need_register_first, Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (!registeredEmail.equalsIgnoreCase(email) || !registeredPassword.equals(password)) {
+                Toast.makeText(this, R.string.login_error_invalid_credentials, Toast.LENGTH_SHORT).show();
                 return;
             }
 

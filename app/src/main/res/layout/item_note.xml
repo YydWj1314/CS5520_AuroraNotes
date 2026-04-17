@@ -62,6 +62,17 @@
             android:maxLines="3"
             android:textColor="#4B5563" />
 
+        <ImageView
+            android:id="@+id/ivThumb"
+            android:layout_width="match_parent"
+            android:layout_height="110dp"
+            android:layout_marginTop="8dp"
+            android:adjustViewBounds="true"
+            android:background="#E2E8F0"
+            android:contentDescription="@string/image_preview"
+            android:scaleType="centerCrop"
+            android:visibility="gone" />
+
         <TextView
             android:id="@+id/tvUpdatedAt"
             android:layout_width="wrap_content"

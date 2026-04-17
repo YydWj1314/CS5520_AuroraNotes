@@ -1,5 +1,6 @@
 package com.auroranotesnative.model;
 
+import androidx.annotation.NonNull;
 import androidx.room.ColumnInfo;
 import androidx.room.Entity;
 import androidx.room.PrimaryKey;
@@ -21,13 +22,31 @@ public class Note implements Serializable {
     @ColumnInfo(defaultValue = "0")
     private int colorTag;
 
+    /** Optional local image URI attached to note. */
+    @ColumnInfo(defaultValue = "")
+    @NonNull
+    private String imageUri;
+
+    /** Start of local calendar day for reminder; 0 = none. */
+    @ColumnInfo(defaultValue = "0")
+    private long dueDateMillis;
+
+    /** Short line for home reminder banner (separate from title). */
+    @ColumnInfo(defaultValue = "")
+    @NonNull
+    private String reminderText;
+
     // Constructor
-    public Note(String title, String content, boolean pinned, long updatedAt, int colorTag) {
+    public Note(String title, String content, boolean pinned, long updatedAt, int colorTag,
+                @NonNull String imageUri, long dueDateMillis, @NonNull String reminderText) {
         this.title = title;
         this.content = content;
         this.pinned = pinned;
         this.updatedAt = updatedAt;
         this.colorTag = colorTag;
+        this.imageUri = imageUri;
+        this.dueDateMillis = dueDateMillis;
+        this.reminderText = reminderText;
     }
 
     // getter / setter
@@ -77,5 +96,30 @@ public class Note implements Serializable {
 
     public void setColorTag(int colorTag) {
         this.colorTag = colorTag;
+    }
+
+    public String getImageUri() {
+        return imageUri == null ? "" : imageUri;
+    }
+
+    public void setImageUri(String imageUri) {
+        this.imageUri = imageUri == null ? "" : imageUri;
+    }
+
+    public long getDueDateMillis() {
+        return dueDateMillis;
+    }
+
+    public void setDueDateMillis(long dueDateMillis) {
+        this.dueDateMillis = dueDateMillis;
+    }
+
+    @NonNull
+    public String getReminderText() {
+        return reminderText == null ? "" : reminderText;
+    }
+
+    public void setReminderText(String reminderText) {
+        this.reminderText = reminderText == null ? "" : reminderText;
     }
 }

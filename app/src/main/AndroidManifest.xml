@@ -8,8 +8,12 @@
         android:roundIcon="@drawable/ic_launcher_foreground"
         android:supportsRtl="true"
         android:theme="@style/Theme.AuroraNotesNativeJava">
+        <activity android:name=".ui.ReviewActivity" />
+        <activity android:name=".ui.RegisterActivity" />
         <activity android:name=".ui.EditNoteActivity" />
-        <activity android:name=".ui.AiChatActivity" />
+        <activity
+            android:name=".ui.AiChatActivity"
+            android:windowSoftInputMode="adjustResize" />
         <activity android:name=".ui.WeatherActivity" />
         <activity android:name=".ui.TranslateActivity" />
         <activity android:name=".ui.NotesActivity" />

@@ -5,11 +5,13 @@ import android.content.Context;
 import androidx.lifecycle.LiveData;
 
 import com.auroranotesnative.model.Note;
+import com.auroranotesnative.util.RichEditorHelper;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -74,9 +76,30 @@ public class NoteRepository {
         dao(context).delete(note);
     }
 
+    /** Notes with a due date on the same local calendar day as {@code referenceMillis}. */
+    public static List<Note> getDueOnSameDay(Context context, long referenceMillis) {
+        List<Note> all = getAll(context);
+        List<Note> out = new ArrayList<>();
+        java.util.Calendar ref = java.util.Calendar.getInstance();
+        ref.setTimeInMillis(referenceMillis);
+        int y = ref.get(java.util.Calendar.YEAR);
+        int d = ref.get(java.util.Calendar.DAY_OF_YEAR);
+
+        for (Note n : all) {
+            long due = n.getDueDateMillis();
+            if (due <= 0) continue;
+            java.util.Calendar c = java.util.Calendar.getInstance();
+            c.setTimeInMillis(due);
+            if (c.get(java.util.Calendar.YEAR) == y && c.get(java.util.Calendar.DAY_OF_YEAR) == d) {
+                out.add(n);
+            }
+        }
+        return out;
+    }
+
     /** Create empty note */
     public static Note createEmpty() {
-        return new Note("", "", false, System.currentTimeMillis(), 0);
+        return new Note("", "", false, System.currentTimeMillis(), 0, "", 0L, "");
     }
 
     public static List<String> extractWikiLinkTitles(String content) {
@@ -85,7 +108,9 @@ public class NoteRepository {
             return titles;
         }
 
-        Matcher matcher = WIKI_LINK_PATTERN.matcher(content);
+        // HTML / spans can split brackets; match on plain text.
+        String plain = RichEditorHelper.toPlainText(content);
+        Matcher matcher = WIKI_LINK_PATTERN.matcher(plain);
         Set<String> seen = new HashSet<>();
         while (matcher.find()) {
             String raw = matcher.group(1);
@@ -144,7 +169,7 @@ public class NoteRepository {
         for (Note note : notes) {
             builder.append("- id: ").append(note.getId());
             builder.append("\n  title: ").append(safe(note.getTitle()));
-            builder.append("\n  content: ").append(safe(note.getContent()));
+            builder.append("\n  content: ").append(RichEditorHelper.toPlainText(safe(note.getContent())));
             builder.append("\n  pinned: ").append(note.isPinned());
             builder.append("\n  updatedAt: ").append(note.getUpdatedAt());
             builder.append("\n");
@@ -153,25 +178,71 @@ public class NoteRepository {
     }
 
     /**
-     * Basic keyword search
+     * Keyword search: case-insensitive substring match in title and content.
+     * Uses raw text (not tokenized TF-IDF) so short queries like "ss" behave as users expect.
      */
     public static List<Note> search(Context context, String query) {
         List<Note> all = getAll(context);
 
         if (query == null || query.trim().isEmpty()) return all;
 
-        String q = normalizeSynonyms(query).toLowerCase(Locale.ROOT).trim();
+        String needle = query.trim().toLowerCase(Locale.ROOT);
         List<Note> results = new ArrayList<>();
 
         for (Note note : all) {
-            String title = normalizeSynonyms(safe(note.getTitle())).toLowerCase(Locale.ROOT);
-            String content = normalizeSynonyms(safe(note.getContent())).toLowerCase(Locale.ROOT);
+            String title = safe(note.getTitle()).toLowerCase(Locale.ROOT);
+            String content = RichEditorHelper.toPlainText(safe(note.getContent())).toLowerCase(Locale.ROOT);
 
-            if (title.contains(q) || content.contains(q)) {
+            if (title.contains(needle) || content.contains(needle)) {
                 results.add(note);
             }
         }
         return results;
+    }
+
+    /**
+     * Keyword matches (substring in title or plain body) for the raw prompt and optional
+     * interpreted query, then fills with semantic-ranked notes without duplicates.
+     */
+    public static List<Note> searchHybrid(Context context, String userPrompt, String interpretedQuery, int maxResults, int semanticCap) {
+        String raw = userPrompt == null ? "" : userPrompt.trim();
+        String interp = interpretedQuery == null ? "" : interpretedQuery.trim();
+        if (raw.isEmpty() && interp.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        LinkedHashMap<Integer, Note> ordered = new LinkedHashMap<>();
+
+        if (!raw.isEmpty()) {
+            for (Note n : search(context, raw)) {
+                if (ordered.size() >= maxResults) {
+                    break;
+                }
+                ordered.putIfAbsent(n.getId(), n);
+            }
+        }
+        if (!interp.isEmpty() && !interp.equalsIgnoreCase(raw)) {
+            for (Note n : search(context, interp)) {
+                if (ordered.size() >= maxResults) {
+                    break;
+                }
+                ordered.putIfAbsent(n.getId(), n);
+            }
+        }
+
+        String semQuery = !interp.isEmpty() ? interp : raw;
+        SemanticSearchResult sem = searchSemanticWithAdaptiveTopN(context, semQuery);
+        int cap = Math.min(sem.notes.size(), Math.max(semanticCap, sem.suggestedTopN));
+        for (int i = 0; i < cap && ordered.size() < maxResults; i++) {
+            Note n = sem.notes.get(i);
+            ordered.putIfAbsent(n.getId(), n);
+        }
+
+        return new ArrayList<>(ordered.values());
+    }
+
+    private static String noteTextForIndexing(Note note) {
+        return safe(note.getTitle()) + " " + RichEditorHelper.toPlainText(safe(note.getContent()));
     }
 
     /**
@@ -189,12 +260,13 @@ public class NoteRepository {
         List<Note> allNotes = getAll(context);
 
         if (query == null || query.trim().isEmpty()) {
-            return new SemanticSearchResult(allNotes, Math.min(5, allNotes.size()));
+            return new SemanticSearchResult(new ArrayList<>(), 0);
         }
 
         List<String> queryTokens = tokenize(query);
+        // Only grammar/stopwords (e.g. "who you are") — do not fall back to "all notes".
         if (queryTokens.isEmpty()) {
-            return new SemanticSearchResult(allNotes, Math.min(5, allNotes.size()));
+            return new SemanticSearchResult(new ArrayList<>(), 0);
         }
 
         Map<String, Integer> tfQuery = termFrequency(queryTokens);
@@ -210,7 +282,7 @@ public class NoteRepository {
         // Compute document frequency
         for (Note note : allNotes) {
             Set<String> seen = new HashSet<>();
-            List<String> tokens = tokenize(note.getTitle() + " " + note.getContent());
+            List<String> tokens = tokenize(noteTextForIndexing(note));
 
             for (String tok : tokens) {
                 if (queryTokenSet.contains(tok)) {
@@ -240,14 +312,14 @@ public class NoteRepository {
 
         normQ = Math.sqrt(normQ);
         if (normQ == 0.0) {
-            return new SemanticSearchResult(allNotes, Math.min(5, allNotes.size()));
+            return new SemanticSearchResult(new ArrayList<>(), 0);
         }
 
         List<ScoredNote> scored = new ArrayList<>();
 
         // Compute cosine similarity
         for (Note note : allNotes) {
-            List<String> tokens = tokenize(note.getTitle() + " " + note.getContent());
+            List<String> tokens = tokenize(noteTextForIndexing(note));
             Map<String, Integer> tfNote = termFrequency(tokens);
 
             double dot = 0.0;
@@ -269,9 +341,7 @@ public class NoteRepository {
             double score = normD == 0.0 ? 0.0 : dot / (normQ * normD);
 
             // Normalize note text into a few core concepts
-            String fullText = normalizeSynonyms(
-                    safe(note.getTitle()) + " " + safe(note.getContent())
-            ).toLowerCase(Locale.ROOT);
+            String fullText = normalizeSynonyms(noteTextForIndexing(note)).toLowerCase(Locale.ROOT);
 
             // Small pinned boost
             if (note.isPinned()) {

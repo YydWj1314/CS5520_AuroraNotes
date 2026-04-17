@@ -3,10 +3,12 @@ package com.auroranotesnative.ui;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.net.Uri;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.auroranotesnative.util.RichEditorHelper;
 import com.auroranotesnative.databinding.ItemNoteBinding;
 import com.auroranotesnative.ai.SummaryEngine;
 import com.auroranotesnative.model.Note;
@@ -76,8 +78,16 @@ public class NotesAdapter extends RecyclerView.Adapter<NotesAdapter.NoteViewHold
                     note.getTitle().isEmpty() ? "Untitled" : note.getTitle()
             );
 
-            // Content preview
-            binding.tvContent.setText(note.getContent());
+            String plain = RichEditorHelper.toPlainText(note.getContent());
+            binding.tvContent.setText(plain);
+
+            String imageUri = note.getImageUri();
+            if (imageUri.trim().isEmpty()) {
+                binding.ivThumb.setVisibility(View.GONE);
+            } else {
+                binding.ivThumb.setVisibility(View.VISIBLE);
+                binding.ivThumb.setImageURI(Uri.parse(imageUri));
+            }
 
             // FIXED: Human-readable time
             binding.tvUpdatedAt.setText(formatUpdatedAt(note.getUpdatedAt()));
@@ -94,10 +104,7 @@ public class NotesAdapter extends RecyclerView.Adapter<NotesAdapter.NoteViewHold
             }
 
             // Summary (AI)
-            String summary = SummaryEngine.summarize(
-                    note.getTitle(),
-                    note.getContent()
-            );
+            String summary = SummaryEngine.summarize(note.getTitle(), plain);
 
             if (summary == null || summary.isEmpty()) {
                 binding.tvSummary.setVisibility(View.GONE);
