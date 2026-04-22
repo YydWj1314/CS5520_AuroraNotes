@@ -142,6 +142,10 @@
     <string name="home_outfit_need_key">Add gemini.api.key in local.properties for AI outfit tips.</string>
     <string name="home_outfit_loading">Asking AI for outfit advice…</string>
     <string name="home_outfit_failed">Outfit advice failed: %1$s</string>
+    <string name="home_weather_toggle_body_expand">Show city, forecast, and outfit details</string>
+    <string name="home_weather_toggle_body_collapse">Hide details to see more notes</string>
+    <string name="home_outfit_toggle_expand">Show AI outfit suggestion</string>
+    <string name="home_outfit_toggle_collapse">Hide AI outfit suggestion</string>
     <string name="due_preset_none">No reminder</string>
     <string name="due_preset_today">Today</string>
     <string name="due_preset_tomorrow">Tomorrow</string>

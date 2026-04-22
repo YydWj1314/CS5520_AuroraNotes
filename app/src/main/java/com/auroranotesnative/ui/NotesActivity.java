@@ -47,6 +47,8 @@ public class NotesActivity extends AppCompatActivity {
     private static final String NOTES_UI_PREFS = "notes_ui";
     private static final String KEY_SORT_MODE = "sort_mode";
     private static final String KEY_HOME_CITY = "home_city";
+    private static final String KEY_HOME_WEATHER_BODY_EXPANDED = "home_weather_body_expanded";
+    private static final String KEY_HOME_OUTFIT_EXPANDED = "home_outfit_expanded";
 
     private final GeminiClient geminiClient = new GeminiClient();
 
@@ -92,7 +94,19 @@ public class NotesActivity extends AppCompatActivity {
         sortMode = loadSortMode();
 
         loadHomeCity();
+        loadHomeWeatherCardExpandState();
         binding.btnHomeWeatherRefresh.setOnClickListener(v -> refreshHomeWeatherAndOutfit());
+        binding.btnToggleHomeWeatherBody.setOnClickListener(v -> {
+            boolean expanded = binding.layoutHomeWeatherBody.getVisibility() == View.VISIBLE;
+            applyWeatherBodyExpanded(!expanded, true);
+        });
+        binding.layoutHomeOutfitHeader.setOnClickListener(v -> {
+            if (binding.layoutHomeWeatherBody.getVisibility() != View.VISIBLE) {
+                return;
+            }
+            boolean expanded = binding.layoutHomeOutfitBody.getVisibility() == View.VISIBLE;
+            applyOutfitExpanded(!expanded, true);
+        });
         binding.getRoot().post(this::refreshHomeWeatherAndOutfit);
 
         binding.btnDismissDueBanner.setOnClickListener(v -> {
@@ -188,6 +202,44 @@ public class NotesActivity extends AppCompatActivity {
             city = "Boston";
         }
         binding.etHomeCity.setText(city);
+    }
+
+    private void loadHomeWeatherCardExpandState() {
+        SharedPreferences prefs = getSharedPreferences(NOTES_UI_PREFS, MODE_PRIVATE);
+        boolean bodyExpanded = prefs.getBoolean(KEY_HOME_WEATHER_BODY_EXPANDED, true);
+        boolean outfitExpanded = prefs.getBoolean(KEY_HOME_OUTFIT_EXPANDED, false);
+        applyWeatherBodyExpanded(bodyExpanded, false);
+        applyOutfitExpanded(outfitExpanded, false);
+    }
+
+    private void applyWeatherBodyExpanded(boolean expanded, boolean persist) {
+        binding.layoutHomeWeatherBody.setVisibility(expanded ? View.VISIBLE : View.GONE);
+        binding.btnToggleHomeWeatherBody.setRotation(expanded ? 180f : 0f);
+        binding.btnToggleHomeWeatherBody.setContentDescription(
+                getString(expanded
+                        ? R.string.home_weather_toggle_body_collapse
+                        : R.string.home_weather_toggle_body_expand));
+        if (persist) {
+            getSharedPreferences(NOTES_UI_PREFS, MODE_PRIVATE)
+                    .edit()
+                    .putBoolean(KEY_HOME_WEATHER_BODY_EXPANDED, expanded)
+                    .apply();
+        }
+    }
+
+    private void applyOutfitExpanded(boolean expanded, boolean persist) {
+        binding.layoutHomeOutfitBody.setVisibility(expanded ? View.VISIBLE : View.GONE);
+        binding.ivHomeOutfitExpand.setRotation(expanded ? 180f : 0f);
+        binding.layoutHomeOutfitHeader.setContentDescription(
+                getString(expanded
+                        ? R.string.home_outfit_toggle_collapse
+                        : R.string.home_outfit_toggle_expand));
+        if (persist) {
+            getSharedPreferences(NOTES_UI_PREFS, MODE_PRIVATE)
+                    .edit()
+                    .putBoolean(KEY_HOME_OUTFIT_EXPANDED, expanded)
+                    .apply();
+        }
     }
 
     private void saveHomeCity(String city) {
