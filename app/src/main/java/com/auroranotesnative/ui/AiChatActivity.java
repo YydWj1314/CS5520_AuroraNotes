@@ -44,7 +44,7 @@ public class AiChatActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         binding = ActivityAiChatBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
-        binding.toolbar.setNavigationIcon(com.google.android.material.R.drawable.abc_ic_ab_back_material);
+        binding.toolbar.setNavigationIcon(androidx.appcompat.R.drawable.abc_ic_ab_back_material);
         binding.toolbar.setNavigationOnClickListener(v -> finish());
 
         promptService = new SemanticSearchPromptService(this, geminiClient);

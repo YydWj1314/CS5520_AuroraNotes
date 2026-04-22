@@ -97,7 +97,7 @@ public class EditNoteActivity extends AppCompatActivity {
         binding = ActivityEditNoteBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        binding.toolbar.setNavigationIcon(com.google.android.material.R.drawable.abc_ic_ab_back_material);
+        binding.toolbar.setNavigationIcon(androidx.appcompat.R.drawable.abc_ic_ab_back_material);
         binding.toolbar.setNavigationOnClickListener(v -> finish());
 
         Object extra = getIntent().getSerializableExtra(NotesActivity.EXTRA_NOTE);
